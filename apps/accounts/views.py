@@ -101,11 +101,12 @@ class ResetPasswordView(APIView):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token = serializer.validated_data["token"]
+        email = serializer.validated_data["email"]
+        otp = serializer.validated_data["otp"]
         password = serializer.validated_data["new_password"]
 
         try:
-            reset_password(token, password)
+            reset_password(email, otp, password)
         except ValueError as e:
             return ApiResponse.error(
                 message="Password reset failed",

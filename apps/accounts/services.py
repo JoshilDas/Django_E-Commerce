@@ -1,5 +1,5 @@
 import hashlib
-import secrets
+import random
 from datetime import timedelta
 
 from django.utils import timezone
@@ -7,52 +7,49 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from .models import PasswordResetToken
-from .tasks import send_password_reset_email_task
 
 User = get_user_model()
 
-PASSWORD_RESET_EXPIRY_MINUTES = 15
+OTP_EXPIRY_MINUTES = 10
+MAX_OTP_ATTEMPTS = 5
 
 
-def generate_raw_token():
-    return secrets.token_urlsafe(48)
+# -------------------------
+# OTP HELPERS
+# -------------------------
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
 
 
-def hash_token(raw_token: str) -> str:
-    return hashlib.sha256(raw_token.encode()).hexdigest()
+def hash_otp(otp: str) -> str:
+    return hashlib.sha256(otp.encode()).hexdigest()
 
 
-def create_password_reset_token(user):
+# -------------------------
+# FORGOT PASSWORD
+# -------------------------
 
-    # Invalidate old tokens
+def create_otp(user):
+
+    # invalidate old OTPs
     PasswordResetToken.objects.filter(
         user=user,
         is_used=False
     ).update(is_used=True)
 
-    raw_token = generate_raw_token()
-    token_hash = hash_token(raw_token)
+    otp = generate_otp()
+    otp_hash = hash_otp(otp)
 
-    expires_at = timezone.now() + timedelta(minutes=PASSWORD_RESET_EXPIRY_MINUTES)
+    expires_at = timezone.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
     PasswordResetToken.objects.create(
         user=user,
-        token_hash=token_hash,
+        otp_hash=otp_hash,
         expires_at=expires_at
     )
 
-    return raw_token
-
-
-def send_password_reset_email(user, raw_token):
-    from django.conf import settings
-
-    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
-
-    send_password_reset_email_task(
-        user_email=user.email,
-        reset_url=reset_url
-    )
+    return otp
 
 
 def handle_forgot_password(email):
@@ -61,37 +58,48 @@ def handle_forgot_password(email):
     except User.DoesNotExist:
         return
 
-    raw_token = create_password_reset_token(user)
-    send_password_reset_email(user, raw_token)
+    otp = create_otp(user)
 
+    # DEV: print OTP (instead of email)
+    print("OTP FOR PASSWORD RESET:", otp)
+
+
+# -------------------------
+# RESET PASSWORD
+# -------------------------
 
 @transaction.atomic
-def reset_password(raw_token, new_password):
+def reset_password(email, otp, new_password):
 
-    token_hash = hash_token(raw_token)
+    user = User.objects.filter(email=email).first()
 
-    token = PasswordResetToken.objects.select_for_update().select_related("user").filter(
-        token_hash=token_hash
-    ).first()
+    if not user:
+        raise ValueError("INVALID_USER")
 
-    if not token:
-        raise ValueError("INVALID_TOKEN")
+    record = PasswordResetToken.objects.select_for_update().filter(
+        user=user,
+        is_used=False
+    ).order_by("-created_at").first()
 
-    if token.is_used:
-        raise ValueError("TOKEN_USED")
+    if not record:
+        raise ValueError("INVALID_OTP")
 
-    if token.expires_at < timezone.now():
-        raise ValueError("TOKEN_EXPIRED")
+    if record.expires_at < timezone.now():
+        raise ValueError("OTP_EXPIRED")
 
-    if not token.user.is_active:
-        raise ValueError("USER_INACTIVE")
+    if record.attempt_count >= MAX_OTP_ATTEMPTS:
+        raise ValueError("OTP_BLOCKED")
 
-    # mark used immediately
-    token.is_used = True
-    token.used_at = timezone.now()
-    token.save()
+    if record.otp_hash != hash_otp(otp):
+        record.attempt_count += 1
+        record.save()
+        raise ValueError("INVALID_OTP")
 
-    user = token.user
+    # success
+    record.is_used = True
+    record.used_at = timezone.now()
+    record.save()
+
     user.set_password(new_password)
     user.save()
 

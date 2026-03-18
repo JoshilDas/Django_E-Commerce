@@ -72,12 +72,16 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-    token = serializers.CharField()
+    email = serializers.EmailField()
+    otp = serializers.CharField()
     new_password = serializers.CharField(write_only=True, min_length=6)
 
     def validate(self, attrs):
-        if not attrs.get("token"):
-            raise serializers.ValidationError("Token is required")
+        if not attrs.get("email"):
+            raise serializers.ValidationError("Email is required")
+
+        if not attrs.get("otp"):
+            raise serializers.ValidationError("OTP is required")
 
         if not attrs.get("new_password"):
             raise serializers.ValidationError("Password is required")

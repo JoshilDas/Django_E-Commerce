@@ -1,0 +1,5 @@
+admin@test.com
+admin
+
+user2@test.com
+pass2 ==> pass123
