@@ -88,7 +88,7 @@ class ForgotPasswordView(APIView):
         handle_forgot_password(email)
 
         return ApiResponse.success(
-            message="If the account exists, a reset link has been sent"
+            message="If the account exists, an OTP has been sent to your email."
         )
 
 

@@ -7,7 +7,9 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from .models import PasswordResetToken
-from core.email import send_otp_email
+
+from apps.accounts.tasks import send_otp_email_task
+from django.db import transaction
 
 User = get_user_model()
 
@@ -63,7 +65,7 @@ def handle_forgot_password(email):
 
     # Send OTP via email
     try:
-        send_otp_email(user.email, otp)
+        transaction.on_commit(lambda: send_otp_email_task.delay(user.email, otp))
     except Exception as e:
         # Do NOT break flow (no enumeration, no API failure)
         print(f"[EMAIL ERROR] Failed to send OTP email: {str(e)}")
