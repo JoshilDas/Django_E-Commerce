@@ -61,3 +61,25 @@ class LoginSerializer(serializers.Serializer):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }
+
+# Adding ForgetPassword Functionalities
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.lower().strip()
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=6)
+
+    def validate(self, attrs):
+        if not attrs.get("token"):
+            raise serializers.ValidationError("Token is required")
+
+        if not attrs.get("new_password"):
+            raise serializers.ValidationError("Password is required")
+
+        return attrs

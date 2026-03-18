@@ -1,13 +1,15 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import get_user_model
-from rest_framework import status
 from rest_framework.views import APIView
 
 from .serializers import RegisterSerializer, UserSerializer, LoginSerializer
-from core.responses import success_response
-from core.throttling import LoginIPThrottle   # NEW IMPORT
+from core.api_response import ApiResponse
+from core.throttling import LoginIPThrottle
 
+#For ForgetPassword
+from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
+from .services import handle_forgot_password, reset_password
 
 User = get_user_model()
 
@@ -25,10 +27,9 @@ class RegisterView(generics.CreateAPIView):
 
         user = serializer.save()
 
-        return success_response(
+        return ApiResponse.created(
             data=UserSerializer(user).data,
             message="User registered successfully",
-            status=status.HTTP_201_CREATED,
         )
 
 
@@ -49,14 +50,13 @@ class LoginView(generics.GenericAPIView):
         access = serializer.validated_data["access"]
         refresh = serializer.validated_data["refresh"]
 
-        return success_response(
+        return ApiResponse.success(
             data={
                 "user": UserSerializer(user).data,
                 "access": access,
                 "refresh": refresh,
             },
             message="Login successful",
-            status=status.HTTP_200_OK,
         )
 
 
@@ -69,7 +69,49 @@ class MeView(APIView):
         user = request.user
         serializer = UserSerializer(user)
 
-        return success_response(
+        return ApiResponse.success(
             data=serializer.data,
             message="User retrieved successfully",
+        )
+
+class ForgotPasswordView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+
+        handle_forgot_password(email)
+
+        return ApiResponse.success(
+            message="If the account exists, a reset link has been sent"
+        )
+
+
+class ResetPasswordView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data["token"]
+        password = serializer.validated_data["new_password"]
+
+        try:
+            reset_password(token, password)
+        except ValueError as e:
+            return ApiResponse.error(
+                message="Password reset failed",
+                code=str(e)
+            )
+
+        return ApiResponse.success(
+            message="Password reset successful"
         )

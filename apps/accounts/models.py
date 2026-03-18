@@ -1,4 +1,6 @@
 from django.db import models
+from core.models import BaseModel
+from django.utils import timezone
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
@@ -60,3 +62,30 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+# Adding Forget Password Functionalities with OTP
+
+class PasswordResetToken(BaseModel):
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="password_reset_tokens"
+    )
+
+    otp_hash = models.CharField(max_length=128)
+
+    expires_at = models.DateTimeField()
+
+    is_used = models.BooleanField(default=False)
+
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    attempt_count = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "password_reset_tokens"
+        indexes = [
+            models.Index(fields=["user", "is_used"]),
+        ]

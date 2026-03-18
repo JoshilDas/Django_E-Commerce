@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-r$g3o8_ib!c_07e5!*m&73(25)c5&_udt41vjtf8g7zk5#cimy
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -187,3 +187,7 @@ LOGGING = {
         },
     },
 }
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@example.com"
+FRONTEND_URL = "http://localhost:5173"

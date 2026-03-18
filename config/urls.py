@@ -23,3 +23,6 @@ urlpatterns = [
 
     path("api/v1/", include("apps.accounts.urls")),
 ]
+
+handler404 = "core.handlers.custom_404_handler"
+handler500 = "core.handlers.custom_500_handler"
