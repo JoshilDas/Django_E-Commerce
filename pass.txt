@@ -2,4 +2,7 @@ admin@test.com
 admin
 
 user2@test.com
-pass2 ==> pass123
+pass2 ==> pass123(via OTP)
+
+joshildas240702@gmail.com
+pass240702 ==> newpass240702(via EMAIL) ==>newpassagain240702! ==>CircularLoop

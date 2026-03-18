@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from .models import PasswordResetToken
+from core.email import send_otp_email
 
 User = get_user_model()
 
@@ -60,15 +61,17 @@ def handle_forgot_password(email):
 
     otp = create_otp(user)
 
-    # DEV: print OTP (instead of email)
-    print("OTP FOR PASSWORD RESET:", otp)
-
+    # Send OTP via email
+    try:
+        send_otp_email(user.email, otp)
+    except Exception as e:
+        # Do NOT break flow (no enumeration, no API failure)
+        print(f"[EMAIL ERROR] Failed to send OTP email: {str(e)}")
 
 # -------------------------
 # RESET PASSWORD
 # -------------------------
 
-@transaction.atomic
 def reset_password(email, otp, new_password):
 
     user = User.objects.filter(email=email).first()
@@ -76,7 +79,7 @@ def reset_password(email, otp, new_password):
     if not user:
         raise ValueError("INVALID_USER")
 
-    record = PasswordResetToken.objects.select_for_update().filter(
+    record = PasswordResetToken.objects.filter(
         user=user,
         is_used=False
     ).order_by("-created_at").first()
@@ -91,16 +94,18 @@ def reset_password(email, otp, new_password):
         raise ValueError("OTP_BLOCKED")
 
     if record.otp_hash != hash_otp(otp):
-        record.attempt_count += 1
-        record.save()
+        PasswordResetToken.objects.filter(id=record.id).update(
+            attempt_count=record.attempt_count + 1
+        )
         raise ValueError("INVALID_OTP")
 
-    # success
-    record.is_used = True
-    record.used_at = timezone.now()
-    record.save()
+    # ✅ Only success path needs transaction
+    with transaction.atomic():
+        record.is_used = True
+        record.used_at = timezone.now()
+        record.save()
 
-    user.set_password(new_password)
-    user.save()
+        user.set_password(new_password)
+        user.save()
 
     return user
