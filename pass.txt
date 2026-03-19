@@ -5,4 +5,7 @@ user2@test.com
 pass2 ==> pass123(via OTP)
 
 joshildas240702@gmail.com
-pass240702 ==> newpass240702(via EMAIL) ==>newpassagain240702! ==>CircularLoop
+pass240702 ==> newpass240702(via EMAIL) ==>newpassagain240702 ==>CircularLoop
+
+joshil.22b0131183@abes.ac.in
+pass22b01 ==> newpass22b01 ==> newpassagain22b01==>CircularLoop

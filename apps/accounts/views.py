@@ -7,6 +7,9 @@ from .serializers import RegisterSerializer, UserSerializer, LoginSerializer
 from core.api_response import ApiResponse
 from core.throttling import LoginIPThrottle
 
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+
 #For ForgetPassword
 from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
 from .services import handle_forgot_password, reset_password
@@ -115,4 +118,33 @@ class ResetPasswordView(APIView):
 
         return ApiResponse.success(
             message="Password reset successful"
+        )
+
+
+class LogoutView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        refresh_token = request.data.get("refresh")
+
+        if not refresh_token:
+            return ApiResponse.error(
+                message="Refresh token required",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+        except Exception:
+            return ApiResponse.error(
+                message="Invalid or expired token",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        return ApiResponse.success(
+            message="Logged out successfully"
         )

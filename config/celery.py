@@ -11,3 +11,6 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # Auto-discover tasks from all installed apps
 app.autodiscover_tasks()
+
+#Setting Up Celery Beat
+app.conf.beat_scheduler = "django_celery_beat.schedulers:DatabaseScheduler"
