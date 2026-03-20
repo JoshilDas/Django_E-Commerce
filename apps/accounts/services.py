@@ -9,11 +9,17 @@ from django.db import transaction
 from .models import PasswordResetToken
 
 from apps.accounts.tasks import send_otp_email_task
-from django.db import transaction
+
+from .exceptions import (
+    InvalidUserException,
+    InvalidOTPException,
+    OTPExpiredException,
+    OTPBlockedException,
+)
 
 User = get_user_model()
 
-OTP_EXPIRY_MINUTES = 10
+OTP_EXPIRY_MINUTES = 2
 MAX_OTP_ATTEMPTS = 5
 
 
@@ -79,7 +85,7 @@ def reset_password(email, otp, new_password):
     user = User.objects.filter(email=email).first()
 
     if not user:
-        raise ValueError("INVALID_USER")
+        raise InvalidUserException()
 
     record = PasswordResetToken.objects.filter(
         user=user,
@@ -87,21 +93,21 @@ def reset_password(email, otp, new_password):
     ).order_by("-created_at").first()
 
     if not record:
-        raise ValueError("INVALID_OTP")
+        raise InvalidOTPException()
 
     if record.expires_at < timezone.now():
-        raise ValueError("OTP_EXPIRED")
+        raise OTPExpiredException()
 
     if record.attempt_count >= MAX_OTP_ATTEMPTS:
-        raise ValueError("OTP_BLOCKED")
+        raise OTPBlockedException()
 
     if record.otp_hash != hash_otp(otp):
         PasswordResetToken.objects.filter(id=record.id).update(
             attempt_count=record.attempt_count + 1
         )
-        raise ValueError("INVALID_OTP")
+        raise InvalidOTPException()
 
-    # ✅ Only success path needs transaction
+    # ✅ ONLY success path is transactional (DO NOT CHANGE)
     with transaction.atomic():
         record.is_used = True
         record.used_at = timezone.now()

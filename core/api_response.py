@@ -97,13 +97,14 @@ class ApiResponse:
         )
 
     @staticmethod
-    def validation_error(errors=None, message="Validation failed"):
+    def validation_error(errors=None, message="Validation failed", code=None):
         return ApiResponse._build_response(
             success=False,
             message=message,
             response_type=RESPONSE_TYPE_VALIDATION_ERROR,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             errors=errors,
+            code=code,
         )
 
     @staticmethod

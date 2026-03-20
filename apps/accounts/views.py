@@ -14,6 +14,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
 from .services import handle_forgot_password, reset_password
 
+#WhileIntroductingROPUGlobalExceptionRefactor
+from rest_framework.exceptions import ValidationError
+
 User = get_user_model()
 
 
@@ -108,13 +111,7 @@ class ResetPasswordView(APIView):
         otp = serializer.validated_data["otp"]
         password = serializer.validated_data["new_password"]
 
-        try:
-            reset_password(email, otp, password)
-        except ValueError as e:
-            return ApiResponse.error(
-                message="Password reset failed",
-                code=str(e)
-            )
+        reset_password(email, otp, password)
 
         return ApiResponse.success(
             message="Password reset successful"
@@ -130,20 +127,14 @@ class LogoutView(APIView):
         refresh_token = request.data.get("refresh")
 
         if not refresh_token:
-            return ApiResponse.error(
-                message="Refresh token required",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError("Refresh token required")
 
         try:
             token = RefreshToken(refresh_token)
             token.blacklist()
 
         except Exception:
-            return ApiResponse.error(
-                message="Invalid or expired token",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError("Invalid or expired token")
 
         return ApiResponse.success(
             message="Logged out successfully"
