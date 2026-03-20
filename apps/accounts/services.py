@@ -17,6 +17,11 @@ from .exceptions import (
     OTPBlockedException,
 )
 
+# Moving authenticationLogicFrom Serializer to Service
+from django.contrib.auth import authenticate
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.tokens import RefreshToken
+
 User = get_user_model()
 
 OTP_EXPIRY_MINUTES = 2
@@ -117,3 +122,22 @@ def reset_password(email, otp, new_password):
         user.save()
 
     return user
+
+# -------------------------
+# LOGIN
+# -------------------------
+
+def login_user(email: str, password: str):
+    
+    user = authenticate(username=email, password=password)
+
+    if not user:
+        raise AuthenticationFailed("Invalid credentials")
+
+    refresh = RefreshToken.for_user(user)
+
+    return {
+        "user_id": user.id,
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+    }

@@ -17,6 +17,9 @@ from .services import handle_forgot_password, reset_password
 #WhileIntroductingROPUGlobalExceptionRefactor
 from rest_framework.exceptions import ValidationError
 
+#WhileMovingAUthentication from Serializer to Service
+from .services import login_user
+
 User = get_user_model()
 
 
@@ -52,15 +55,15 @@ class LoginView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data["user"]
-        access = serializer.validated_data["access"]
-        refresh = serializer.validated_data["refresh"]
+        data = login_user(**serializer.validated_data)
+
+        user = User.objects.get(id=data["user_id"])
 
         return ApiResponse.success(
             data={
                 "user": UserSerializer(user).data,
-                "access": access,
-                "refresh": refresh,
+                "access": data["access"],
+                "refresh": data["refresh"],
             },
             message="Login successful",
         )

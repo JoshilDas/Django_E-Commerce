@@ -45,22 +45,8 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-
-        email = data.get("email")
-        password = data.get("password")
-
-        user = authenticate(username=email, password=password)
-
-        if not user:
-            raise AuthenticationFailed("Invalid credentials")
-
-        refresh = RefreshToken.for_user(user)
-
-        return {
-            "user": user,
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }
+        # ✅ PURE VALIDATION ONLY
+        return data
 
 # Adding ForgetPassword Functionalities
 
